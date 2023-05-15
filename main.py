@@ -1,82 +1,53 @@
-import time
-from window import Ui_MainWindow
+import customtkinter as ctk
 
-from PySide2.QtCore import * 
-from PySide2.QtGui import *  
-from PySide2.QtWidgets import *  
+import threading
+import os
+from tkinter import messagebox
 
-import os, sys
-import yt_dlp as youtube_dl
+from downloader import download
 
-#create our main class
-class Logic(QMainWindow):
+
+class App(ctk.CTk):
     def __init__(self):
-        super(Logic, self).__init__()
+        super().__init__()
 
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
+        #set appearance mode
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("dark-blue")
 
-        #set variables
-        self.download = False
-        self.folder = None
-        self.yt_options = {
-                'format': 'bestaudio/best',
-                'postprocessors': [
-                {
-                        'key': 'FFmpegExtractAudio',
-                        'preferredcodec': 'mp3',
-                        'preferredquality': '192',
-                }
-            ]
-        }
+        self.geometry("500x600")
+        self.wm_minsize(300, 300)
+        self.title("YouTube audio downloader")
 
-        #our methods
-        self.connect()
-        self.lock()
-        self.show()
+        #create frames
+        self.frame = ctk.CTkFrame(self, fg_color="transparent", width=500)
+        self.frame.pack(anchor="n", side="top", expand=True)        
 
-    #methods we use for mainwindow
-    def connect(self):
-        self.ui.pushButton.clicked.connect(self.choose_folder)
-        self.ui.pushButton_2.clicked.connect(self.download_video)
+        #add the input
+        self.input = ctk.CTkEntry(self.frame, placeholder_text="enter a url", width=350)
+        self.input.pack(anchor="center", pady=(200, 50), expand=True)
 
-    def lock(self):
-        if self.download:
-            print("yes")
-            self.ui.pushButton.setEnabled(True)
-            self.ui.pushButton_2.setEnabled(True)
+        #create the buttons
+        for i in range(2):
+            button = ctk.CTkButton(self.frame, text="Download" if i == 0 else "Choose a folder", width=100,
+                                   command = self.download if i == 0 else self.choose_folder)
+            button.pack(anchor="n", side = "left" if i == 0 else "right", expand=True)
 
-    #methods we use for download video
     def choose_folder(self):
         try:
-            self.folder = QFileDialog.getExistingDirectory(self, "Choose folder to save mp3")
-            self.ui.plainTextEdit.setPlainText("")
-            self.ui.pushButton.setText(self.folder)
-            os.chdir(self.folder)
-            self.ui.plainTextEdit.setPlainText("")
-        except FileNotFoundError:
-            self.ui.plainTextEdit.setPlainText("Please choose a folder!")
-
-    def download_video(self):
-        try:
-            url = self.ui.lineEdit.text()
-
-            self.ui.plainTextEdit.setPlainText("downloading...")
-            #download at start a video
-            if self.folder is not None:
-                with youtube_dl.YoutubeDL(self.yt_options) as ydl:
-                    self.download = True
-                    ydl.download([url])
-            else:
-                self.ui.plainTextEdit.setPlainText("Please choose a folder!")
-            
-            self.ui.plainTextEdit.setPlainText("finised!!!!!!!!")
-            self.download = False
+            dir_ = ctk.filedialog.askdirectory(title="Choose a folder")
+            os.chdir(dir_)
         except Exception as e:
-            self.ui.plainTextEdit.setPlainText(e)
-            self.ui.plainTextEdit.setPlainText("Please enter a correct url to download!")
+            pass
 
-if __name__ == '__main__':
-    app = QApplication()
-    log = Logic()
-    sys.exit(app.exec_())
+    def download(self):
+        try:
+            dl = threading.Thread(target=download, args=(self.input.get(),), name="dl")
+            dl.start()
+            info = messagebox.showinfo(message="please wait...")
+        except Exception as e:
+            pass
+
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()
